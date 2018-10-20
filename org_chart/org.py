@@ -56,9 +56,8 @@ def add_node(tree, new, parent_name):
             if child.div_unknown and child is not new:
                 child.div_val = (child.div_val[0], child.div_val[1] - new.all_val[1])
 
-    return False
-
 def main():
+    setrecursionlimit(3000)
     n_q = list(raw_input().split())
 
     node_info = raw_input().split()
