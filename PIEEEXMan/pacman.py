@@ -1,57 +1,86 @@
-from time import clock
+from sys import stdin, stdout
 
 def main():
-   start = clock()
    graph = []
-   cherries = []
+   cherries = set()
    pacman = None
    ghost = None
 
    dimensions = raw_input().split()
    dimensions = [2*int(mn)+1 for mn in dimensions]
 
+   graph = [[0 for y in range(dimensions[0])] for x in range(dimensions[1])]
+
    for x in range(dimensions[1]):
-      user_input = raw_input()
-      y = 0
-      for char in user_input:
+      for y in range(dimensions[0]+1):
+         if (x == dimensions[0]-1) and (y == dimensions[0]):
+            continue
+         char = stdin.read(1)
          if char == '@':
-            cherries.append((x, y))
+            cherries.add((x, y))
          elif char == '1':
             pacman = (x, y)
          elif char == '2':
             ghost = (x, y)
-         y += 1
-      graph.append(list(user_input))
-      x += 1
+         elif char == '\n':
+            continue
+         graph[x][y] = char
 
+   last_input = ''.join(graph[dimensions[1]-1])
+
+   pacman_score = 0
+   ghost_score = 0
    goal = (pacman, None)
    pacman_turn = True
    while True:
       # If pacman_turn:
       if pacman_turn:
+         move = ''
+         if not cherries:
+            stdout.write('W')
+            pacman_turn = False
+            continue
          # If our goal cherry is gone, we need to pick a new one
-         if not goal[1] or graph[goal[0][0]][goal[0][1]] != '@':
+         elif not goal[1] or goal[0] not in cherries:
             # Get the estimated three closest cherries
-            cherries.sort(key=lambda c : manhattan(pacman, c))
-            closest_cherries = cherries[0:4]
+            closest_cherries = sorted(cherries, key=lambda c : manhattan(pacman, c))[0:4]
             # Calculate their actual paths and sort based on path lengths
             closest_cherries_vals = [(c, search(pacman, c, graph)) for c in closest_cherries]
             closest_cherries_vals.sort(key=lambda c : len(c[1]))
             # Make the closest one our goal cherry
             goal = closest_cherries_vals[0]
+         next_position = goal[1].pop()
+         if next_position == ghost:
+            goal[1].append(next_position)
+            move = 'W'
+            pacman_turn = False
+            continue
+         else:
+            move = get_move_char(pacman, next_position)
+            pacman = next_position
+            if pacman in cherries:
+               cherries.remove(pacman)
+               pacman_score += 1
+         stdout.write(move)
+         pacman_turn = False
+         
       else: # If opponent's turn:
-         #
-         pass
-
-
-
-   stop = clock()
-   print(stop - start)
+         # Get opponent move
+         user_input = raw_input()
+         move = user_input[0]
+         dxdy = get_move_dxdy(move)
+         ghost = (ghost[0] + dxdy[0], ghost[1] + dxdy[1])
+         if ghost in cherries:
+            cherries.remove(ghost)
+            ghost_score += 1
+         if len(user_input) > 1:
+            break
+         pacman_turn = True
    return 0
 
 def print_path(graph, path, dimensions):
    output = '\n'.join([' '.join([graph[row][col] if (row, col) not in path else '^' for col in range(dimensions[0])]) for row in range(dimensions[1])])
-   print(output)
+   stdout.writelines(output)
    
 def search(current, goal, graph):
    # current, parent, (dn, hn)
@@ -78,11 +107,11 @@ def search(current, goal, graph):
 
       fringe.sort(key=lambda n: n[2][0] + n[2][1], reverse=True)
 
-   path = [current]
+   path = []
    while current:
-      current = paths[current]
       path.append(current)
-
+      current = paths[current]
+   path.pop()
    return path
 
 def successors(parent, graph):
@@ -117,12 +146,12 @@ def get_move_char(curr_pos, neighbor_pos):
       if dy == 2: return 'R'
    return 'W'
 
-if __name__ == '__main__':
-   main()
-
 def get_move_dxdy(char):
    if char == 'U': return(-2, 0)
    if char == 'D': return(2, 0)
    if char == 'L': return(0, -2)
    if char == 'R': return(0, 2)
    if char == 'W': return(0, 0)
+
+if __name__ == '__main__':
+   main()
